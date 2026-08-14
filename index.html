@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bug Siege — Garden Defense Field Manual</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2f5233">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Libre+Franklin:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#e7d8ae;
+  --paper-light:#f1e6c4;
+  --paper-dark:#d9c793;
+  --ink:#2b2318;
+  --ink-soft:#5c5138;
+  --pine:#2f5233;
+  --brick:#a13d2f;
+  --mustard:#c99a3a;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:radial-gradient(ellipse at top,var(--paper-light),var(--paper) 65%);
+  font-family:'Libre Franklin',-apple-system,'Segoe UI',Arial,sans-serif;
+  color:var(--ink);
+  padding:18px;
+  min-height:100vh;
+}
+#app{ max-width:1060px; margin:0 auto; }
+.hidden{ display:none !important; }
+
+#titlebar{
+  display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:8px;
+  border-bottom:3px solid var(--ink);
+  padding-bottom:10px; margin-bottom:14px;
+}
+#gameTitle{
+  font-family:'Alfa Slab One',Georgia,serif;
+  font-size:clamp(26px,5vw,40px);
+  margin:0; color:var(--pine); letter-spacing:0.01em;
+  text-shadow:2px 2px 0 rgba(43,35,24,0.15);
+}
+#gameSubtitle{
+  font-family:'Special Elite','Courier New',monospace;
+  margin:2px 0 0; font-size:12.5px; color:var(--ink-soft);
+}
+#progressBadge{
+  font-family:'Special Elite','Courier New',monospace;
+  font-size:12.5px;
+  border:1.5px dashed var(--ink-soft);
+  padding:5px 10px;
+  border-radius:3px;
+  color:var(--ink-soft);
+  white-space:nowrap;
+}
+
+#stageBanner{
+  font-family:'Special Elite','Courier New',monospace;
+  font-size:13px; color:var(--ink-soft);
+  text-align:center;
+  margin-bottom:10px;
+  border:1px dashed var(--ink-soft);
+  border-radius:3px;
+  padding:6px 10px;
+  background:var(--paper-light);
+}
+
+#statsBar{
+  display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+  background:var(--paper-light);
+  border:2px solid var(--ink);
+  border-radius:5px;
+  padding:10px 14px;
+  margin-bottom:16px;
+  box-shadow:2px 2px 0 rgba(43,35,24,0.12);
+}
+.statPill{
+  font-weight:700; font-size:14.5px;
+  display:flex; align-items:center; gap:5px;
+  background:var(--paper);
+  border:1.5px solid var(--ink-soft);
+  border-radius:20px;
+  padding:5px 12px;
+  white-space:nowrap;
+}
+#messageText{
+  flex:1; min-width:140px;
+  font-family:'Special Elite','Courier New',monospace;
+  font-size:12.5px; color:var(--brick);
+  text-align:center;
+}
+#controls{ display:flex; gap:8px; margin-left:auto; }
+
+#gameArea{ display:flex; gap:18px; flex-wrap:wrap; justify-content:center; }
+
+#canvasWrap{
+  position:relative;
+  width:720px; max-width:100%;
+  border:6px solid var(--ink);
+  border-radius:6px;
+  box-shadow:4px 4px 0 rgba(43,35,24,0.25);
+  overflow:hidden;
+  background:var(--paper);
+  line-height:0;
+}
+#gameCanvas{ display:block; width:100%; height:auto; touch-action:none; }
+
+#damageFlash{
+  position:absolute; inset:0; pointer-events:none; z-index:2;
+  background:radial-gradient(circle,transparent 45%,rgba(161,61,47,0.45) 100%);
+  opacity:0; transition:opacity 0.15s;
+}
+#damageFlash.active{ opacity:1; }
+
+#stampOverlay{
+  position:absolute; left:50%; top:38%; z-index:3;
+  transform:translate(-50%,-50%);
+  font-family:'Alfa Slab One',Georgia,serif;
+  font-size:clamp(22px,4vw,38px);
+  text-transform:uppercase; letter-spacing:0.02em;
+  border:5px solid var(--pine);
+  color:var(--pine);
+  padding:8px 20px;
+  border-radius:6px;
+  opacity:0; pointer-events:none;
+  background:rgba(241,230,196,0.3);
+  white-space:nowrap;
+}
+#stampOverlay.show{ animation:stampIn 1.6s ease-out forwards; }
+@keyframes stampIn{
+  0%{opacity:0; transform:translate(-50%,-50%) rotate(-12deg) scale(1.9);}
+  15%{opacity:1; transform:translate(-50%,-50%) rotate(-7deg) scale(1);}
+  78%{opacity:1; transform:translate(-50%,-50%) rotate(-7deg) scale(1);}
+  100%{opacity:0; transform:translate(-50%,-50%) rotate(-7deg) scale(1);}
+}
+
+.overlay{
+  position:absolute; inset:0; z-index:10;
+  background:rgba(43,35,24,0.74);
+  display:flex; align-items:center; justify-content:center;
+  padding:20px;
+  overflow-y:auto;
+}
+.overlayCard{
+  background:var(--paper-light);
+  border:3px solid var(--ink);
+  border-radius:8px;
+  padding:24px 26px;
+  max-width:420px;
+  box-shadow:5px 5px 0 rgba(0,0,0,0.35);
+  text-align:center;
+}
+.overlayCard.wide{ max-width:600px; width:100%; }
+.overlayCard h2{
+  font-family:'Alfa Slab One',Georgia,serif;
+  color:var(--pine); margin-top:0; font-size:24px;
+}
+.overlayCard p{ line-height:1.55; font-size:14px; }
+.overlayCard ul{ text-align:left; font-size:13.5px; line-height:1.7; padding-left:20px; }
+.overlayBtnRow{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:14px; }
+
+.stageGrid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:10px;
+  margin:16px 0;
+  max-height:48vh;
+  overflow-y:auto;
+  padding:4px;
+}
+.stageCard{
+  font-family:'Libre Franklin',sans-serif;
+  background:var(--paper);
+  border:2px solid var(--ink);
+  border-radius:5px;
+  padding:12px 8px;
+  cursor:pointer;
+  text-align:center;
+  box-shadow:2px 2px 0 rgba(43,35,24,0.2);
+  transition:transform 0.08s;
+}
+.stageCard:hover:not(:disabled){ transform:translateY(-2px); }
+.stageCard:disabled{ cursor:not-allowed; opacity:0.55; }
+.stageCard.cleared{ border-color:var(--pine); background:#e3ecdc; }
+.stageCardNum{ font-family:'Alfa Slab One',Georgia,serif; font-size:22px; color:var(--pine); }
+.stageCard.locked .stageCardNum{ color:var(--ink-soft); }
+.stageCardName{ font-size:11.5px; margin-top:4px; color:var(--ink-soft); }
+.stageCardCleared{ font-size:10px; color:var(--pine); font-weight:700; margin-top:4px; }
+
+#shop{
+  width:270px; max-width:100%;
+  background:var(--paper-light);
+  border:2px solid var(--ink);
+  border-radius:6px;
+  padding:14px;
+  box-shadow:3px 3px 0 rgba(43,35,24,0.2);
+  align-self:flex-start;
+}
+.panelLabel{
+  font-family:'Special Elite','Courier New',monospace;
+  text-transform:uppercase; letter-spacing:0.08em;
+  font-size:13.5px; margin:0 0 10px; color:var(--ink-soft);
+  border-bottom:1.5px dashed var(--ink-soft); padding-bottom:6px;
+}
+.shopCard{
+  display:flex; align-items:center; gap:10px;
+  background:var(--paper);
+  border:1.5px solid var(--ink-soft);
+  border-left:5px solid var(--pine);
+  border-radius:3px;
+  padding:8px 10px;
+  margin-bottom:8px;
+  cursor:pointer;
+  transition:transform 0.1s, box-shadow 0.1s;
+  box-shadow:1px 1px 0 rgba(43,35,24,0.15);
+}
+.shopCard:hover{ transform:translateX(2px); }
+.shopCard.selected{ background:#e0c878; box-shadow:2px 2px 0 var(--ink); }
+.shopCard.unaffordable{ opacity:0.42; }
+.shopCardIcon{ font-size:22px; width:28px; text-align:center; flex-shrink:0; }
+.shopCardBody{ flex:1; min-width:0; }
+.shopCardName{ font-weight:700; font-size:13px; }
+.shopCardDesc{ font-size:11px; color:var(--ink-soft); }
+.shopCardStats{ font-size:10.5px; margin-top:2px; }
+.shopCardCost{
+  font-family:'Special Elite','Courier New',monospace;
+  font-size:12px; font-weight:700; color:var(--ink); white-space:nowrap; flex-shrink:0;
+}
+
+#turretInfo{
+  background:var(--paper);
+  border:1.5px dashed var(--ink-soft);
+  border-radius:4px;
+  padding:10px;
+  margin-top:2px;
+  font-size:12.5px;
+}
+#turretInfo h4{ margin:0 0 4px; font-family:'Alfa Slab One',Georgia,serif; font-size:14px; color:var(--ink); font-weight:400; }
+#turretInfo p{ margin:0; line-height:1.5; color:var(--ink-soft); }
+.infoBtnRow{ display:flex; gap:8px; margin-top:8px; }
+.infoBtnRow .stampBtn{ flex:1; padding:7px 6px; font-size:11.5px; }
+
+#shopHint{ font-size:10.5px; color:var(--ink-soft); margin-top:10px; line-height:1.5; }
+
+.stampBtn{
+  font-family:'Libre Franklin',sans-serif;
+  font-weight:800; text-transform:uppercase; letter-spacing:0.03em;
+  background:var(--paper-light);
+  border:2.5px solid var(--ink);
+  color:var(--ink);
+  border-radius:4px;
+  padding:9px 16px;
+  cursor:pointer;
+  box-shadow:2px 2px 0 var(--ink);
+  transition:transform 0.08s, box-shadow 0.08s;
+  font-size:13px;
+}
+.stampBtn:hover:not(:disabled){ transform:translate(-1px,-1px); box-shadow:3px 3px 0 var(--ink); }
+.stampBtn:active:not(:disabled){ transform:translate(1px,1px); box-shadow:0 0 0 var(--ink); }
+.stampBtn:disabled{ opacity:0.5; cursor:not-allowed; box-shadow:1px 1px 0 var(--ink); }
+.stampBtn.primary{ background:var(--pine); color:var(--paper-light); }
+.stampBtn.danger{ background:var(--brick); color:var(--paper-light); }
+
+@media (max-width:760px){
+  #shop{ width:100%; }
+  #controls{ margin-left:0; width:100%; justify-content:flex-end; }
+  #statsBar{ justify-content:center; }
+}
+@media (prefers-reduced-motion:reduce){
+  #stampOverlay.show{ animation:none; opacity:1; }
+  .stampBtn{ transition:none; }
+  #damageFlash{ transition:none; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header id="titlebar">
+    <div>
+      <h1 id="gameTitle">🐞 Bug Siege</h1>
+      <p id="gameSubtitle">— a garden defense field manual —</p>
+    </div>
+    <div id="progressBadge">Stages Cleared: 0/10</div>
+  </header>
+
+  <div id="stageBanner" class="hidden"></div>
+
+  <div id="statsBar">
+    <div class="statPill">💰&nbsp;<span id="creditsVal">250</span></div>
+    <div class="statPill">❤️&nbsp;<span id="livesVal">20</span></div>
+    <div class="statPill">🌊&nbsp;Wave <span id="waveVal">0</span>/10</div>
+    <div id="messageText"></div>
+    <div id="controls">
+      <button id="speedBtn" class="stampBtn" type="button">1x Speed</button>
+      <button id="startWaveBtn" class="stampBtn primary" type="button">Start Wave 1</button>
+    </div>
+  </div>
+
+  <div id="gameArea">
+    <div id="canvasWrap">
+      <canvas id="gameCanvas"></canvas>
+      <div id="damageFlash"></div>
+      <div id="stampOverlay"></div>
+
+      <div id="startOverlay" class="overlay">
+        <div class="overlayCard">
+          <h2>Field Manual: Bug Siege</h2>
+          <p>Insects are advancing down the garden trail toward your home plot. Deploy turrets along the way to hold the line before they arrive.</p>
+          <ul>
+            <li>💰 Spend credits to build turrets — earn more with every kill</li>
+            <li>🎯 Range, placement, and turret type all matter</li>
+            <li>❤️ Lives are limited — don't let bugs reach the bottom</li>
+            <li>🗺️ 10 stages, 10 waves each — clear them all to save the garden</li>
+          </ul>
+          <button id="startGameBtn" class="stampBtn primary" type="button">Choose Stage</button>
+        </div>
+      </div>
+
+      <div id="stageSelectOverlay" class="overlay hidden">
+        <div class="overlayCard wide">
+          <h2>Choose Your Stage</h2>
+          <p>Clear a stage's 10 waves to unlock the next one.</p>
+          <div id="stageSelectGrid" class="stageGrid"></div>
+        </div>
+      </div>
+
+      <div id="stageClearedOverlay" class="overlay hidden">
+        <div class="overlayCard">
+          <h2 id="stageClearedTitle">—</h2>
+          <p id="stageClearedMessage">—</p>
+          <div class="overlayBtnRow">
+            <button id="nextStageBtn" class="stampBtn primary" type="button">Next Stage</button>
+            <button id="stageClearedBackBtn" class="stampBtn" type="button">Stage Select</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="endOverlay" class="overlay hidden">
+        <div class="overlayCard">
+          <h2 id="endTitle">—</h2>
+          <p id="endMessage">—</p>
+          <div class="overlayBtnRow">
+            <button id="restartBtn" class="stampBtn primary" type="button">Retry Stage</button>
+            <button id="endBackBtn" class="stampBtn" type="button">Stage Select</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="shop">
+      <h3 class="panelLabel">Defenses</h3>
+      <div id="shopCards"></div>
+      <div id="turretInfo" class="hidden">
+        <h4 id="infoName">—</h4>
+        <p id="infoStats">—</p>
+        <div class="infoBtnRow">
+          <button id="sellBtn" class="stampBtn danger" type="button">Sell +<span id="sellVal">0</span></button>
+          <button id="deselectBtn" class="stampBtn" type="button">Close</button>
+        </div>
+      </div>
+      <p id="shopHint">Tap a defense, then tap the map to place it. Tap a placed turret to inspect or sell it. Esc or right-click cancels placement.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- Config: turrets, bugs, waves, stages ---------- */
+
+const TURRET_DEFS = {
+  thorn:  { name:'Thorn Turret',    emoji:'🌵', cost:50,  range:110, fireRate:0.45, damage:9,  splash:0,  slow:0,   slowDuration:0,   projColor:'#2f5233', projSpeed:420, desc:'Fast & cheap, short reach' },
+  sniper: { name:'Pinecone Sniper', emoji:'🌰', cost:150, range:230, fireRate:1.7,  damage:48, splash:0,  slow:0,   slowDuration:0,   projColor:'#5c4a2e', projSpeed:600, desc:'Heavy hit, long range, slow fire' },
+  splash: { name:'Sprinkler',       emoji:'💦', cost:120, range:135, fireRate:1.0,  damage:14, splash:55, slow:0,   slowDuration:0,   projColor:'#2e6b8a', projSpeed:380, desc:'Soaks every bug nearby' },
+  web:    { name:'Web Weaver',      emoji:'🕸️', cost:65,  range:95,  fireRate:1.1,  damage:2,  splash:0,  slow:0.5, slowDuration:2.2, projColor:'#8a8378', projSpeed:500, desc:'Slows bugs — pairs with others' },
+};
+const turretAccent = { thorn:'#2f5233', sniper:'#5c4a2e', splash:'#2e6b8a', web:'#6b6258' };
+
+const BUG_DEFS = {
+  ant:    { name:'Ant',        emoji:'🐜', hp:30,  speed:62,  reward:4,  lifeCost:1, size:22 },
+  wasp:   { name:'Wasp',       emoji:'🐝', hp:16,  speed:115, reward:5,  lifeCost:1, size:20 },
+  beetle: { name:'Beetle',     emoji:'🪲', hp:95,  speed:34,  reward:8,  lifeCost:2, size:26 },
+  boss:   { name:'Boss Roach', emoji:'🪳', hp:420, speed:38,  reward:60, lifeCost:5, size:36 },
+};
+
+const WAVES = [
+  { interval:0.80, entries:[{type:'ant',count:6}] },
+  { interval:0.65, entries:[{type:'ant',count:10}] },
+  { interval:0.60, entries:[{type:'ant',count:8},{type:'wasp',count:5}] },
+  { interval:0.55, entries:[{type:'ant',count:8},{type:'wasp',count:6},{type:'beetle',count:3}] },
+  { interval:0.60, entries:[{type:'ant',count:8},{type:'beetle',count:4},{type:'boss',count:1}] },
+  { interval:0.40, entries:[{type:'wasp',count:12},{type:'beetle',count:6}] },
+  { interval:0.45, entries:[{type:'ant',count:12},{type:'wasp',count:8},{type:'beetle',count:6}] },
+  { interval:0.45, entries:[{type:'beetle',count:10},{type:'wasp',count:10},{type:'ant',count:6}] },
+  { interval:0.35, entries:[{type:'ant',count:14},{type:'wasp',count:12},{type:'beetle',count:8}] },
+  { interval:0.35, entries:[{type:'ant',count:12},{type:'wasp',count:12},{type:'beetle',count:8},{type:'boss',count:3}] },
+];
+
+// 10 stages, each a differently-shaped trail across the same plot.
+// Waypoints are [col,row] grid cells; row -1 sits just above the map (spawn side).
+const STAGES = [
+  { name:'The Garden Gate', waypoints:[[16,-1],[16,2],[2,2],[2,6],[15,6],[15,10],[1,10],[1,14]] },
+  { name:'Tight Rows',      waypoints:[[1,-1],[1,2],[16,2],[16,5],[1,5],[1,8],[16,8],[16,11],[1,11],[1,14]] },
+  { name:'The Spiral Bed',  waypoints:[[9,-1],[9,2],[16,2],[16,6],[2,6],[2,9],[14,9],[14,12],[4,12],[4,14]] },
+  { name:'Accordion Row',   waypoints:[[16,-1],[16,1],[4,1],[4,4],[16,4],[16,7],[4,7],[4,10],[16,10],[16,12],[4,12],[4,14]] },
+  { name:'Staircase Steps', waypoints:[[2,-1],[2,2],[6,2],[6,4],[10,4],[10,6],[14,6],[14,8],[10,8],[10,10],[6,10],[6,12],[2,12],[2,14]] },
+  { name:'Center Cross',    waypoints:[[9,-1],[9,2],[3,2],[3,5],[15,5],[15,8],[3,8],[3,11],[15,11],[15,14]] },
+  { name:'Double Back',     waypoints:[[16,-1],[16,3],[5,3],[5,7],[12,7],[12,4],[2,4],[2,10],[13,10],[13,13],[3,13],[3,14]] },
+  { name:'Wide Sweep',      waypoints:[[8,-1],[8,3],[16,3],[16,9],[1,9],[1,14]] },
+  { name:'The Maze',        waypoints:[[1,-1],[1,1],[6,1],[6,3],[3,3],[3,6],[9,6],[9,2],[13,2],[13,6],[16,6],[16,9],[10,9],[10,12],[15,12],[15,14]] },
+  { name:'Last Stand',      waypoints:[[9,-1],[9,1],[2,1],[2,4],[16,4],[16,2],[13,2],[13,6],[5,6],[5,9],[16,9],[16,12],[8,12],[8,7],[3,7],[3,13],[11,13],[11,14]] },
+];
+
+const STARTING_CREDITS = 250;
+const STARTING_LIVES = 20;
+function stageMultiplier(stageIdx){ return 1 + stageIdx*0.18; }
+
+/* ---------- Grid & path ---------- */
+
+const GRID_COLS = 18, GRID_ROWS = 15, CELL = 40;
+const CANVAS_W = GRID_COLS*CELL, CANVAS_H = GRID_ROWS*CELL;
+
+function cellCenter(col,row){ return { x: col*CELL+CELL/2, y: row*CELL+CELL/2 }; }
+
+function buildPathCellsFor(waypointCells){
+  const set = new Set();
+  for (let i=0;i<waypointCells.length-1;i++){
+    const a=waypointCells[i], b=waypointCells[i+1];
+    if (a.col===b.col){
+      const c=a.col, r0=Math.min(a.row,b.row), r1=Math.max(a.row,b.row);
+      for (let r=r0;r<=r1;r++){ if (r>=0&&r<GRID_ROWS) set.add(c+','+r); }
+    } else if (a.row===b.row){
+      const r=a.row, c0=Math.min(a.col,b.col), c1=Math.max(a.col,b.col);
+      for (let c=c0;c<=c1;c++){ if (r>=0&&r<GRID_ROWS) set.add(c+','+r); }
+    }
+  }
+  return set;
+}
+function computePathMeta(points){
+  const segs=[]; let total=0;
+  for (let i=0;i<points.length-1;i++){
+    const dx=points[i+1].x-points[i].x, dy=points[i+1].y-points[i].y;
+    const len=Math.hypot(dx,dy);
+    segs.push({len,cum:total});
+    total+=len;
+  }
+  return {segs,total};
+}
+
+let PATH_WAYPOINTS_CELLS = STAGES[0].waypoints.map(([col,row])=>({col,row}));
+let PATH_POINTS = PATH_WAYPOINTS_CELLS.map(p=>cellCenter(p.col,p.row));
+let pathCellSet = buildPathCellsFor(PATH_WAYPOINTS_CELLS);
+let PATH_META = computePathMeta(PATH_POINTS);
+
+function setStage(stageIdx){
+  const stage = STAGES[stageIdx];
+  PATH_WAYPOINTS_CELLS = stage.waypoints.map(([col,row])=>({col,row}));
+  PATH_POINTS = PATH_WAYPOINTS_CELLS.map(p=>cellCenter(p.col,p.row));
+  pathCellSet = buildPathCellsFor(PATH_WAYPOINTS_CELLS);
+  PATH_META = computePathMeta(PATH_POINTS);
+}
+
+function getPointAtDistance(dist){
+  const last = PATH_POINTS[PATH_POINTS.length-1];
+  if (dist<=0) return { x:PATH_POINTS[0].x, y:PATH_POINTS[0].y };
+  if (dist>=PATH_META.total) return { x:last.x, y:last.y };
+  for (let i=0;i<PATH_META.segs.length;i++){
+    const seg=PATH_META.segs[i];
+    const segEnd=seg.cum+seg.len;
+    if (dist<=segEnd){
+      const t = seg.len===0?0:(dist-seg.cum)/seg.len;
+      const p0=PATH_POINTS[i], p1=PATH_POINTS[i+1];
+      return { x:p0.x+(p1.x-p0.x)*t, y:p0.y+(p1.y-p0.y)*t };
+    }
+  }
+  return { x:last.x, y:last.y };
+}
+function getDirAtDistance(dist){
+  let d=dist;
+  if (d<=0) d=0.01;
+  if (d>=PATH_META.total) d=PATH_META.total-0.01;
+  for (let i=0;i<PATH_META.segs.length;i++){
+    const seg=PATH_META.segs[i];
+    const segEnd=seg.cum+seg.len;
+    if (d<=segEnd){
+      const p0=PATH_POINTS[i], p1=PATH_POINTS[i+1];
+      const dx=p1.x-p0.x, dy=p1.y-p0.y;
+      const len=Math.hypot(dx,dy)||1;
+      return { x:dx/len, y:dy/len };
+    }
+  }
+  return { x:0, y:1 };
+}
+function clamp(v,mn,mx){ return Math.max(mn,Math.min(mx,v)); }
+function isCellBuildable(col,row){
+  if (col<0||col>=GRID_COLS||row<0||row>=GRID_ROWS) return false;
+  if (pathCellSet.has(col+','+row)) return false;
+  if (state.turrets.some(t=>t.col===col&&t.row===row)) return false;
+  return true;
+}
+
+/* ---------- DOM references ---------- */
+
+const gameCanvas = document.getElementById('gameCanvas');
+gameCanvas.width = CANVAS_W;
+gameCanvas.height = CANVAS_H;
+const ctx = gameCanvas.getContext('2d');
+
+const creditsVal=document.getElementById('creditsVal');
+const livesVal=document.getElementById('livesVal');
+const waveVal=document.getElementById('waveVal');
+const messageTextEl=document.getElementById('messageText');
+const speedBtn=document.getElementById('speedBtn');
+const startWaveBtn=document.getElementById('startWaveBtn');
+const progressBadge=document.getElementById('progressBadge');
+const stageBannerEl=document.getElementById('stageBanner');
+const damageFlashEl=document.getElementById('damageFlash');
+const stampOverlayEl=document.getElementById('stampOverlay');
+const startOverlay=document.getElementById('startOverlay');
+const startGameBtn=document.getElementById('startGameBtn');
+const stageSelectOverlay=document.getElementById('stageSelectOverlay');
+const stageSelectGrid=document.getElementById('stageSelectGrid');
+const stageClearedOverlay=document.getElementById('stageClearedOverlay');
+const stageClearedTitle=document.getElementById('stageClearedTitle');
+const stageClearedMessage=document.getElementById('stageClearedMessage');
+const nextStageBtn=document.getElementById('nextStageBtn');
+const stageClearedBackBtn=document.getElementById('stageClearedBackBtn');
+const endOverlay=document.getElementById('endOverlay');
+const endTitle=document.getElementById('endTitle');
+const endMessage=document.getElementById('endMessage');
+const restartBtn=document.getElementById('restartBtn');
+const endBackBtn=document.getElementById('endBackBtn');
+const shopCardsEl=document.getElementById('shopCards');
+const turretInfoEl=document.getElementById('turretInfo');
+const infoNameEl=document.getElementById('infoName');
+const infoStatsEl=document.getElementById('infoStats');
+const sellBtn=document.getElementById('sellBtn');
+const sellValEl=document.getElementById('sellVal');
+const deselectBtn=document.getElementById('deselectBtn');
+
+/* ---------- State ---------- */
+
+function createInitialState(){
+  return {
+    credits: STARTING_CREDITS,
+    lives: STARTING_LIVES,
+    currentStage: 0,
+    currentWave: 0,
+    waveActive: false,
+    bugs: [],
+    turrets: [],
+    projectiles: [],
+    spawnQueue: [],
+    spawnIndex: 0,
+    waveTimer: 0,
+    gameState: 'start',
+    placingType: null,
+    selectedTurretId: null,
+    hoverCell: null,
+    speedMultiplier: 1,
+    totalKills: 0,
+    nextBugId: 1,
+    nextTurretId: 1,
+  };
+}
+let state = createInitialState();
+let stagesUnlocked = 1;
+let stagesCleared = new Array(STAGES.length).fill(false);
+
+/* ---------- Core game logic ---------- */
+
+function buildSpawnQueue(waveIdx){
+  const wave = WAVES[waveIdx];
+  const pools = wave.entries.map(e=>({type:e.type, remaining:e.count}));
+  const order=[];
+  let more=true;
+  while (more){
+    more=false;
+    for (const p of pools){
+      if (p.remaining>0){ order.push(p.type); p.remaining--; more=true; }
+    }
+  }
+  return order.map((type,i)=>({type, time:i*wave.interval}));
+}
+
+function spawnBug(type){
+  const def=BUG_DEFS[type];
+  const hp=Math.round(def.hp*(1+(state.currentWave-1)*0.09)*stageMultiplier(state.currentStage));
+  state.bugs.push({
+    id:state.nextBugId++, type, def, hp, maxHp:hp,
+    distanceTraveled:0, x:PATH_POINTS[0].x, y:PATH_POINTS[0].y,
+    slowFactor:1, slowTimer:0, dead:false, leaked:false,
+  });
+}
+
+function findTarget(t){
+  let best=null, bestProgress=-1;
+  for (const b of state.bugs){
+    if (b.dead) continue;
+    const d=Math.hypot(b.x-t.x,b.y-t.y);
+    if (d<=t.def.range && b.distanceTraveled>bestProgress){
+      bestProgress=b.distanceTraveled; best=b;
+    }
+  }
+  return best;
+}
+
+function fireTurret(t,target){
+  state.projectiles.push({
+    x:t.x, y:t.y, targetId:target.id,
+    speed:t.def.projSpeed, damage:t.def.damage,
+    splash:t.def.splash||0, slow:t.def.slow||0, slowDuration:t.def.slowDuration||0,
+    color:t.def.projColor, sourceTurretId:t.id, dead:false,
+  });
+}
+
+function applyHit(p, primary){
+  const targets=[primary];
+  if (p.splash>0){
+    for (const b of state.bugs){
+      if (b===primary || b.dead) continue;
+      if (Math.hypot(b.x-primary.x,b.y-primary.y)<=p.splash) targets.push(b);
+    }
+  }
+  for (const b of targets){
+    b.hp -= p.damage;
+    if (p.slow>0){ b.slowFactor=p.slow; b.slowTimer=p.slowDuration; }
+    if (b.hp<=0 && !b.dead){
+      b.dead=true;
+      state.credits += b.def.reward;
+      state.totalKills++;
+      const src = state.turrets.find(t=>t.id===p.sourceTurretId);
+      if (src) src.kills++;
+    }
+  }
+}
+
+function updateProjectile(p, dt){
+  const target = state.bugs.find(b=>b.id===p.targetId && !b.dead);
+  if (!target){ p.dead=true; return; }
+  const dx=target.x-p.x, dy=target.y-p.y;
+  const dist=Math.hypot(dx,dy);
+  const moveDist=p.speed*dt;
+  if (dist<=moveDist || dist<1){
+    applyHit(p,target);
+    p.dead=true;
+  } else {
+    p.x += dx/dist*moveDist;
+    p.y += dy/dist*moveDist;
+  }
+}
+
+function update(dt){
+  if (state.waveActive){
+    state.waveTimer += dt;
+    while (state.spawnIndex<state.spawnQueue.length && state.waveTimer>=state.spawnQueue[state.spawnIndex].time){
+      spawnBug(state.spawnQueue[state.spawnIndex].type);
+      state.spawnIndex++;
+    }
+  }
+
+  for (const b of state.bugs){
+    if (b.dead) continue;
+    if (b.slowTimer>0){
+      b.slowTimer -= dt;
+      if (b.slowTimer<=0){ b.slowTimer=0; b.slowFactor=1; }
+    }
+    const spd = b.def.speed*(b.slowFactor||1);
+    b.distanceTraveled += spd*dt;
+    const pos = getPointAtDistance(b.distanceTraveled);
+    b.x=pos.x; b.y=pos.y;
+    if (b.distanceTraveled>=PATH_META.total){
+      b.dead=true; b.leaked=true;
+      state.lives = Math.max(0, state.lives-b.def.lifeCost);
+      triggerDamageFlash();
+    }
+  }
+
+  for (const t of state.turrets){
+    if (t.cooldown>0) t.cooldown -= dt;
+    if (t.cooldown<=0){
+      const target=findTarget(t);
+      if (target){ fireTurret(t,target); t.cooldown=t.def.fireRate; }
+    }
+  }
+
+  for (const p of state.projectiles){ if (!p.dead) updateProjectile(p,dt); }
+
+  state.bugs = state.bugs.filter(b=>!b.dead);
+  state.projectiles = state.projectiles.filter(p=>!p.dead);
+
+  if (state.lives<=0){ endGame(); return; }
+
+  if (state.waveActive && state.spawnIndex>=state.spawnQueue.length && state.bugs.length===0){
+    state.waveActive=false;
+    const bonus = 40 + state.currentWave*8;
+    state.credits += bonus;
+    showMessage(`Wave ${state.currentWave} cleared — +${bonus} credits`);
+    showStamp('Wave Cleared', '#2f5233');
+    if (state.currentWave>=WAVES.length){ stageCleared(); }
+  }
+
+  updateStatsUI();
+}
+
+function endGame(){
+  state.gameState = 'lost';
+  state.waveActive = false;
+  endTitle.textContent = 'The Bugs Got Through';
+  endMessage.textContent = `You made it to wave ${state.currentWave} of "${STAGES[state.currentStage].name}" and defeated ${state.totalKills} bugs before your defenses fell.`;
+  endOverlay.classList.remove('hidden');
+  updateStatsUI();
+}
+
+function stageCleared(){
+  state.gameState = 'stageCleared';
+  state.waveActive = false;
+  const idx = state.currentStage;
+  stagesCleared[idx] = true;
+  if (idx+1 < STAGES.length && stagesUnlocked < idx+2) stagesUnlocked = idx+2;
+  saveProgress();
+
+  const isFinal = idx === STAGES.length-1;
+  stageClearedTitle.textContent = isFinal ? 'Campaign Complete!' : `Stage ${idx+1} Cleared!`;
+  stageClearedMessage.textContent = isFinal
+    ? `You held every one of the 10 stages and defeated ${state.totalKills} bugs along the way. The garden is safe for good.`
+    : `You held "${STAGES[idx].name}" through all 10 waves and defeated ${state.totalKills} bugs.`;
+  nextStageBtn.classList.toggle('hidden', isFinal);
+  stageClearedOverlay.classList.remove('hidden');
+  updateStatsUI();
+}
+
+/* ---------- Rendering ---------- */
+
+function drawGround(){
+  for (let r=0;r<GRID_ROWS;r++){
+    for (let c=0;c<GRID_COLS;c++){
+      ctx.fillStyle = (r+c)%2===0 ? '#7f9a5c' : '#768f55';
+      ctx.fillRect(c*CELL,r*CELL,CELL,CELL);
+    }
+  }
+  const vg = ctx.createRadialGradient(CANVAS_W/2,CANVAS_H/2,CANVAS_H*0.3,CANVAS_W/2,CANVAS_H/2,CANVAS_H*0.75);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,'rgba(43,35,24,0.18)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+}
+
+function strokePathLine(){
+  ctx.beginPath();
+  ctx.moveTo(PATH_POINTS[0].x,PATH_POINTS[0].y);
+  for (let i=1;i<PATH_POINTS.length;i++) ctx.lineTo(PATH_POINTS[i].x,PATH_POINTS[i].y);
+  ctx.stroke();
+}
+function drawPath(){
+  ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.strokeStyle='#8a6a42'; ctx.lineWidth=CELL; strokePathLine();
+  ctx.strokeStyle='#a5825a'; ctx.lineWidth=CELL-16; strokePathLine();
+  ctx.setLineDash([10,8]);
+  ctx.strokeStyle='rgba(43,35,24,0.4)'; ctx.lineWidth=2.5; strokePathLine();
+  ctx.setLineDash([]);
+}
+function drawPathTicks(){
+  ctx.fillStyle='rgba(43,35,24,0.4)';
+  for (let dist=70; dist<PATH_META.total-30; dist+=110){
+    const p=getPointAtDistance(dist);
+    const d=getDirAtDistance(dist);
+    const ang=Math.atan2(d.y,d.x);
+    ctx.save();
+    ctx.translate(p.x,p.y);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.moveTo(-6,-7); ctx.lineTo(7,0); ctx.lineTo(-6,7); ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+}
+function drawCompass(){
+  const cx=48, cy=50, r=24;
+  ctx.save();
+  ctx.globalAlpha=0.6;
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.fillStyle='#f1e6c4'; ctx.fill();
+  ctx.lineWidth=2; ctx.strokeStyle='#2b2318'; ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx,cy-r+7); ctx.lineTo(cx+6,cy); ctx.lineTo(cx,cy+r-7); ctx.lineTo(cx-6,cy); ctx.closePath();
+  ctx.fillStyle='#a13d2f'; ctx.fill();
+  ctx.font='bold 10px sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='#2b2318';
+  ctx.fillText('N',cx,cy-r-8);
+  ctx.restore();
+}
+function drawSpawnMarker(){
+  const entryX = PATH_POINTS[0].x;
+  ctx.save();
+  ctx.globalAlpha=0.55;
+  ctx.beginPath();
+  ctx.ellipse(entryX,4,16,6,0,0,Math.PI*2);
+  ctx.fillStyle='#2b2318';
+  ctx.fill();
+  ctx.restore();
+}
+function drawBaseMarker(){
+  const p = PATH_POINTS[PATH_POINTS.length-1];
+  ctx.font='30px sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('🏠', p.x, p.y);
+}
+function drawTurrets(){
+  for (const t of state.turrets){
+    ctx.fillStyle='rgba(90,66,38,0.7)';
+    ctx.strokeStyle='rgba(43,35,24,0.55)';
+    ctx.lineWidth=1.5;
+    ctx.fillRect(t.x-15,t.y-11,30,22);
+    ctx.strokeRect(t.x-15,t.y-11,30,22);
+    ctx.font='22px sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(t.def.emoji,t.x,t.y-1);
+  }
+}
+function drawSelectedTurretRange(){
+  if (state.selectedTurretId==null) return;
+  const t = state.turrets.find(x=>x.id===state.selectedTurretId);
+  if (!t) return;
+  ctx.beginPath();
+  ctx.arc(t.x,t.y,t.def.range,0,Math.PI*2);
+  ctx.fillStyle='rgba(46,107,138,0.10)'; ctx.fill();
+  ctx.strokeStyle='rgba(46,107,138,0.55)'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.strokeStyle='#a13d2f'; ctx.lineWidth=2.5;
+  ctx.strokeRect(t.x-16,t.y-12,32,24);
+}
+function drawBuildableHints(){
+  if (!state.placingType) return;
+  ctx.strokeStyle='rgba(43,35,24,0.15)';
+  ctx.lineWidth=1;
+  for (let r=0;r<GRID_ROWS;r++){
+    for (let c=0;c<GRID_COLS;c++){
+      if (isCellBuildable(c,r)) ctx.strokeRect(c*CELL+3,r*CELL+3,CELL-6,CELL-6);
+    }
+  }
+}
+function drawPlacementPreview(){
+  if (!state.placingType || !state.hoverCell) return;
+  const {col,row} = state.hoverCell;
+  const def = TURRET_DEFS[state.placingType];
+  const {x,y} = cellCenter(col,row);
+  const valid = isCellBuildable(col,row) && state.credits>=def.cost;
+
+  ctx.beginPath();
+  ctx.arc(x,y,def.range,0,Math.PI*2);
+  ctx.fillStyle = valid?'rgba(47,82,51,0.12)':'rgba(161,61,47,0.12)'; ctx.fill();
+  ctx.strokeStyle = valid?'rgba(47,82,51,0.55)':'rgba(161,61,47,0.55)'; ctx.lineWidth=1.5; ctx.stroke();
+
+  ctx.fillStyle = valid?'rgba(47,82,51,0.35)':'rgba(161,61,47,0.35)';
+  ctx.fillRect(col*CELL,row*CELL,CELL,CELL);
+
+  ctx.globalAlpha=0.65;
+  ctx.font='24px sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(def.emoji,x,y);
+  ctx.globalAlpha=1;
+}
+function drawHpBar(b){
+  const w=28,h=5;
+  const x=b.x-w/2, y=b.y-b.def.size/2-12;
+  ctx.fillStyle='rgba(43,35,24,0.4)';
+  ctx.fillRect(x-1,y-1,w+2,h+2);
+  const pct=Math.max(0,b.hp/b.maxHp);
+  ctx.fillStyle = pct>0.5?'#2f5233':pct>0.25?'#c99a3a':'#a13d2f';
+  ctx.fillRect(x,y,w*pct,h);
+}
+function drawBugs(){
+  for (const b of state.bugs){
+    if (b.slowTimer>0){
+      ctx.beginPath();
+      ctx.arc(b.x,b.y,b.def.size/2+5,0,Math.PI*2);
+      ctx.strokeStyle='rgba(138,131,120,0.8)'; ctx.lineWidth=2; ctx.stroke();
+    }
+    ctx.font=`${b.def.size}px sans-serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(b.def.emoji,b.x,b.y);
+    drawHpBar(b);
+  }
+}
+function drawProjectiles(){
+  for (const p of state.projectiles){
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,5,0,Math.PI*2);
+    ctx.fillStyle=p.color;
+    ctx.fill();
+  }
+}
+function render(){
+  ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
+  drawGround();
+  drawPath();
+  drawPathTicks();
+  drawCompass();
+  drawSpawnMarker();
+  drawBaseMarker();
+  drawTurrets();
+  drawSelectedTurretRange();
+  drawBuildableHints();
+  drawPlacementPreview();
+  drawBugs();
+  drawProjectiles();
+  refreshShopCards();
+}
+
+/* ---------- UI sync ---------- */
+
+function updateStatsUI(){
+  creditsVal.textContent = state.credits;
+  livesVal.textContent = state.lives;
+  waveVal.textContent = Math.min(state.currentWave,WAVES.length);
+  progressBadge.textContent = 'Stages Cleared: '+stagesCleared.filter(Boolean).length+'/10';
+
+  if (state.gameState==='playing'){
+    stageBannerEl.textContent = `Stage ${state.currentStage+1} of 10 — ${STAGES[state.currentStage].name}`;
+    stageBannerEl.classList.remove('hidden');
+  } else {
+    stageBannerEl.classList.add('hidden');
+  }
+
+  if (state.gameState!=='playing'){
+    startWaveBtn.disabled = true;
+    startWaveBtn.textContent = 'Start Wave 1';
+  } else if (state.waveActive){
+    startWaveBtn.disabled = true;
+    startWaveBtn.textContent = 'Wave In Progress…';
+  } else if (state.currentWave>=WAVES.length){
+    startWaveBtn.disabled = true;
+    startWaveBtn.textContent = 'All Waves Cleared';
+  } else {
+    startWaveBtn.disabled = false;
+    startWaveBtn.textContent = `Start Wave ${state.currentWave+1}`;
+  }
+}
+
+function refreshShopCards(){
+  const cards = shopCardsEl.querySelectorAll('.shopCard');
+  cards.forEach(card=>{
+    const type=card.dataset.type;
+    const def=TURRET_DEFS[type];
+    card.classList.toggle('selected', state.placingType===type);
+    card.classList.toggle('unaffordable', state.credits<def.cost);
+  });
+}
+
+let messageTimer=null;
+function showMessage(text){
+  messageTextEl.textContent=text;
+  clearTimeout(messageTimer);
+  messageTimer=setTimeout(()=>{ messageTextEl.textContent=''; },3000);
+}
+
+function showTurretInfo(t){
+  turretInfoEl.classList.remove('hidden');
+  infoNameEl.textContent = `${t.def.emoji} ${t.def.name}`;
+  let s = `Damage ${t.def.damage} · Range ${t.def.range} · Rate ${(1/t.def.fireRate).toFixed(1)}/s`;
+  if (t.def.splash>0) s += ` · Splash ${t.def.splash}`;
+  if (t.def.slow>0) s += ` · Slows ${Math.round((1-t.def.slow)*100)}%`;
+  s += ` · Kills ${t.kills}`;
+  infoStatsEl.textContent = s;
+  sellValEl.textContent = Math.round(t.def.cost*0.5);
+}
+function hideTurretInfo(){ turretInfoEl.classList.add('hidden'); }
+
+let damageFlashTimer=null;
+function triggerDamageFlash(){
+  damageFlashEl.classList.add('active');
+  clearTimeout(damageFlashTimer);
+  damageFlashTimer=setTimeout(()=>damageFlashEl.classList.remove('active'),300);
+}
+
+function showStamp(text,color){
+  stampOverlayEl.textContent=text;
+  stampOverlayEl.style.color=color;
+  stampOverlayEl.style.borderColor=color;
+  stampOverlayEl.classList.remove('show');
+  void stampOverlayEl.offsetWidth;
+  stampOverlayEl.classList.add('show');
+}
+
+function buildShopCards(){
+  shopCardsEl.innerHTML='';
+  for (const type of Object.keys(TURRET_DEFS)){
+    const def=TURRET_DEFS[type];
+    const card=document.createElement('div');
+    card.className='shopCard';
+    card.dataset.type=type;
+    card.style.borderLeftColor = turretAccent[type] || '#2f5233';
+    const rateStr = (1/def.fireRate).toFixed(1);
+    const statsLine = def.damage>0
+      ? `💥${def.damage} · 🎯${def.range} · ⏱${rateStr}/s`
+      : `🎯${def.range} · ⏱${rateStr}/s`;
+    card.innerHTML =
+      '<div class="shopCardIcon">'+def.emoji+'</div>'+
+      '<div class="shopCardBody">'+
+        '<div class="shopCardName">'+def.name+'</div>'+
+        '<div class="shopCardDesc">'+def.desc+'</div>'+
+        '<div class="shopCardStats">'+statsLine+'</div>'+
+      '</div>'+
+      '<div class="shopCardCost">'+def.cost+'💰</div>';
+    card.addEventListener('click', ()=>selectShopType(type));
+    shopCardsEl.appendChild(card);
+  }
+}
+
+function selectShopType(type){
+  if (state.gameState!=='playing') return;
+  const def = TURRET_DEFS[type];
+  if (state.credits<def.cost){ showMessage('Not enough credits'); }
+  state.placingType = (state.placingType===type) ? null : type;
+  state.selectedTurretId = null;
+  hideTurretInfo();
+}
+
+function buildStageGrid(){
+  stageSelectGrid.innerHTML='';
+  STAGES.forEach((stage, idx)=>{
+    const unlocked = idx < stagesUnlocked;
+    const cleared = stagesCleared[idx];
+    const card=document.createElement('button');
+    card.type='button';
+    card.className='stageCard'+(unlocked?'':' locked')+(cleared?' cleared':'');
+    card.disabled = !unlocked;
+    card.innerHTML =
+      '<div class="stageCardNum">'+(unlocked?(idx+1):'🔒')+'</div>'+
+      '<div class="stageCardName">'+(unlocked?stage.name:'???')+'</div>'+
+      (cleared?'<div class="stageCardCleared">✓ Cleared</div>':'');
+    if (unlocked) card.addEventListener('click', ()=>startStage(idx));
+    stageSelectGrid.appendChild(card);
+  });
+}
+
+/* ---------- Input ---------- */
+
+function getCanvasPos(evt){
+  const rect = gameCanvas.getBoundingClientRect();
+  const scaleX = CANVAS_W/rect.width;
+  const scaleY = CANVAS_H/rect.height;
+  return { x:(evt.clientX-rect.left)*scaleX, y:(evt.clientY-rect.top)*scaleY };
+}
+
+function handleCanvasPointerDown(evt){
+  if (state.gameState!=='playing') return;
+  const pos = getCanvasPos(evt);
+  const col = clamp(Math.floor(pos.x/CELL),0,GRID_COLS-1);
+  const row = clamp(Math.floor(pos.y/CELL),0,GRID_ROWS-1);
+
+  if (state.placingType){
+    const def = TURRET_DEFS[state.placingType];
+    if (!isCellBuildable(col,row)){ showMessage("Can't build there"); return; }
+    if (state.credits<def.cost){ showMessage('Not enough credits'); return; }
+    const {x,y} = cellCenter(col,row);
+    state.turrets.push({ id:state.nextTurretId++, type:state.placingType, def, col, row, x, y, cooldown:0, kills:0 });
+    state.credits -= def.cost;
+    updateStatsUI();
+  } else {
+    const hitTurret = state.turrets.find(t=>Math.hypot(t.x-pos.x,t.y-pos.y)<=20);
+    if (hitTurret){ state.selectedTurretId=hitTurret.id; showTurretInfo(hitTurret); }
+    else { state.selectedTurretId=null; hideTurretInfo(); }
+  }
+}
+function handleCanvasPointerMove(evt){
+  if (state.gameState!=='playing') return;
+  const pos = getCanvasPos(evt);
+  const col = clamp(Math.floor(pos.x/CELL),0,GRID_COLS-1);
+  const row = clamp(Math.floor(pos.y/CELL),0,GRID_ROWS-1);
+  state.hoverCell = {col,row};
+}
+
+gameCanvas.addEventListener('pointerdown', handleCanvasPointerDown);
+gameCanvas.addEventListener('pointermove', handleCanvasPointerMove);
+gameCanvas.addEventListener('pointerleave', ()=>{ state.hoverCell=null; });
+gameCanvas.addEventListener('contextmenu', (e)=>{ e.preventDefault(); state.placingType=null; });
+
+document.addEventListener('keydown', (e)=>{
+  if (e.key==='Escape'){
+    state.placingType=null;
+    state.selectedTurretId=null;
+    hideTurretInfo();
+  }
+});
+
+startWaveBtn.addEventListener('click', ()=>{
+  if (state.gameState!=='playing' || state.waveActive) return;
+  if (state.currentWave>=WAVES.length) return;
+  state.currentWave += 1;
+  state.spawnQueue = buildSpawnQueue(state.currentWave-1);
+  state.spawnIndex = 0;
+  state.waveTimer = 0;
+  state.waveActive = true;
+  updateStatsUI();
+});
+
+speedBtn.addEventListener('click', ()=>{
+  state.speedMultiplier = state.speedMultiplier===1 ? 2 : 1;
+  speedBtn.textContent = state.speedMultiplier+'x Speed';
+});
+
+sellBtn.addEventListener('click', ()=>{
+  if (state.selectedTurretId==null) return;
+  const idx = state.turrets.findIndex(t=>t.id===state.selectedTurretId);
+  if (idx===-1) return;
+  const t = state.turrets[idx];
+  const refund = Math.round(t.def.cost*0.5);
+  state.credits += refund;
+  state.turrets.splice(idx,1);
+  state.selectedTurretId = null;
+  hideTurretInfo();
+  updateStatsUI();
+});
+
+deselectBtn.addEventListener('click', ()=>{
+  state.selectedTurretId=null;
+  hideTurretInfo();
+});
+
+function showStageSelect(){
+  state.gameState = 'stageSelect';
+  startOverlay.classList.add('hidden');
+  endOverlay.classList.add('hidden');
+  stageClearedOverlay.classList.add('hidden');
+  buildStageGrid();
+  stageSelectOverlay.classList.remove('hidden');
+  updateStatsUI();
+}
+
+function startStage(idx){
+  state = createInitialState();
+  state.currentStage = idx;
+  state.gameState = 'playing';
+  setStage(idx);
+  startOverlay.classList.add('hidden');
+  stageSelectOverlay.classList.add('hidden');
+  stageClearedOverlay.classList.add('hidden');
+  endOverlay.classList.add('hidden');
+  hideTurretInfo();
+  updateStatsUI();
+}
+
+startGameBtn.addEventListener('click', showStageSelect);
+stageClearedBackBtn.addEventListener('click', showStageSelect);
+endBackBtn.addEventListener('click', showStageSelect);
+nextStageBtn.addEventListener('click', ()=>startStage(state.currentStage+1));
+restartBtn.addEventListener('click', ()=>startStage(state.currentStage));
+
+/* ---------- Persistent campaign progress ---------- */
+
+async function loadProgress(){
+  try {
+    if (typeof window.storage === 'undefined') return;
+    const res = await window.storage.get('stageProgress');
+    if (res && res.value){
+      const v = JSON.parse(res.value);
+      if (typeof v.unlocked === 'number') stagesUnlocked = clamp(v.unlocked,1,STAGES.length);
+      if (Array.isArray(v.cleared) && v.cleared.length===STAGES.length) stagesCleared = v.cleared.map(Boolean);
+    }
+  } catch(e){ /* no saved progress yet, or storage unavailable */ }
+  updateStatsUI();
+  buildStageGrid();
+}
+async function saveProgress(){
+  try {
+    if (typeof window.storage === 'undefined') return;
+    await window.storage.set('stageProgress', JSON.stringify({ unlocked:stagesUnlocked, cleared:stagesCleared }));
+  } catch(e){ /* ignore storage failures */ }
+}
+
+/* ---------- Main loop ---------- */
+
+let lastTime = null;
+function frame(now){
+  if (lastTime===null) lastTime = now;
+  let dt = (now-lastTime)/1000;
+  lastTime = now;
+  dt = Math.min(dt,0.05);
+  dt *= state.speedMultiplier;
+
+  if (state.gameState==='playing') update(dt);
+  render();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Init ---------- */
+
+buildShopCards();
+buildStageGrid();
+updateStatsUI();
+loadProgress();
+requestAnimationFrame(frame);
+
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{ /* offline support is optional */ });
+  });
+}
+
+})();
+</script>
+</body>
+</html>
