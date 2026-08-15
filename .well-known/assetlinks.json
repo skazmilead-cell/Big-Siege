@@ -2,7 +2,7 @@
       "relation": ["delegate_permission/common.handle_all_urls"],
       "target": {
         "namespace": "android_app",
-        "package_name": "skazmilead_cell.github.io",
+        "package_name": "io.github.skazmilead_cell.twa",
         "sha256_cert_fingerprints": ["2F:48:FE:88:D3:A7:18:56:2D:8F:1E:71:C0:DC:C2:F0:78:E9:BE:5A:17:80:58:A1:B5:F5:DD:3D:DD:43:A0:40"]
       }
     }]
